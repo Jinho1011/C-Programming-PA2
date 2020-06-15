@@ -49,16 +49,6 @@ int main() {
 	gen_flag(temp_map, 3, 3, 20);
 	shuffle_map(temp_map);
 
-	for ( int i = 0; i < MAP_SIZE; i++ ) {
-		for ( int j = 0; j < MAP_SIZE; j++ ) {
-			printf("%d ", map[i][j]);
-		}
-		printf("\n");
-	}
-
-	Sleep(3000);
-	system("cls");
-
 	// map¿¡ temp_map ³Ö±â
 	for ( int i = 1; i < MAP_SIZE-1; i++ ) {
 		for ( int j = 1; j < MAP_SIZE-1; j++ ) {

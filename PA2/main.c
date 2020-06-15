@@ -12,13 +12,13 @@
 #define SPACE 32
 #define ESC 27
 #define NONE_MARK "  "
-#define PLAYER_MARK "¡ß"
-#define WALL_MARK "¡á"
-#define GUARD_MARK "¢Ã"
-#define FLAG_MARK "¢º"
-#define TREASURE_MARK "¢Ë"
+#define PLAYER_MARK "â—†"
+#define WALL_MARK "â– "
+#define GUARD_MARK "â–£"
+#define FLAG_MARK "â–¶"
+#define TREASURE_MARK "â–¦"
 
-// ³­ÀÌµµº° ¸Ê »ı¼º
+// ë‚œì´ë„ë³„ ë§µ ìƒì„±
 void gen_beginner_map();
 void gen_intermediate_map();
 void gen_advanced_map();
@@ -26,94 +26,107 @@ void gen_flag(int temp_map[][MAP_SIZE - 1], int trap_flag, int help_flag, int wa
 void shuffle_map(int temp_map[][MAP_SIZE - 1]);
 void set_map_1(int map[][MAP_SIZE]);
 
-// ¸Ê Ãâ·Â
-void display_map();		
+// ë§µ ì¶œë ¥
+void display_map(int map[][MAP_SIZE]);
 
-// ¸Ş´º Ãâ·Â
-void display_menu();			
+// ë©”ë‰´ ì¶œë ¥
+void display_menu();
 
-// ÇÃ·¹ÀÌ¾î ÀÌµ¿ ÀÔ·Â
+// í”Œë ˆì´ì–´ ì´ë™ ì…ë ¥
 void move_player();
 
-void gotoxy(int x, int y);			
+void gotoxy(int x, int y);
 
-
-
-int main() {
+int main()
+{
 	srand(time(NULL));
 
 	int map[MAP_SIZE][MAP_SIZE];
 	set_map_1(map);
-	int temp_map[MAP_SIZE-1][MAP_SIZE-1] = { 0 };
-	
+	int temp_map[MAP_SIZE - 1][MAP_SIZE - 1] = {0};
+
 	gen_flag(temp_map, 3, 3, 20);
 	shuffle_map(temp_map);
 
-	// map¿¡ temp_map ³Ö±â
-	for ( int i = 1; i < MAP_SIZE-1; i++ ) {
-		for ( int j = 1; j < MAP_SIZE-1; j++ ) {
+	// mapì— temp_map ë„£ê¸°
+	for (int i = 1; i < MAP_SIZE - 1; i++)
+	{
+		for (int j = 1; j < MAP_SIZE - 1; j++)
+		{
 			map[i][j] = temp_map[i - 1][j - 1];
 		}
 	}
 
-	for ( int i = 0; i < MAP_SIZE ; i++ ) {
-		for ( int j = 0; j < MAP_SIZE ; j++ ) {
+	for (int i = 0; i < MAP_SIZE; i++)
+	{
+		for (int j = 0; j < MAP_SIZE; j++)
+		{
 			printf("%d ", map[i][j]);
 		}
 		printf("\n");
 	}
 }
 
-
-void gen_flag(int temp_map[][MAP_SIZE-1], int trap_flag, int help_flag, int wall) {
-	int* map = temp_map;
-	int index = 0;
-
-	// ÇÔÁ¤ ±ê¹ß
-	for ( int i = 0; i < trap_flag; i++ )
-		*(map + index++) = rand() % 3 + 2;
-
-	// ÈùÆ® ±ê¹ß
-	for ( int i = 0; i < help_flag; i++ )
-		*( map + index++) = rand() % 3 + 5;
-
-	// ÀÌµ¿ ºÒ°¡´É ¿µ¿ª
-	for ( int i = 0; i < wall; i++ )
-		*( map + index++ ) = 1;
-
-	// º¸¹° ±ê¹ß
-	*( map + index++ ) = 8;
-
-	// ¿øÁ¡
-	*( map + index ) = 9;
+void display_map()
+{
 }
 
-void shuffle_map(int temp_map[][MAP_SIZE - 1]) {
-	int* map = temp_map;
-	int temp_map_1d[( MAP_SIZE - 1 ) * ( MAP_SIZE - 1)];
+void gen_flag(int temp_map[][MAP_SIZE - 1], int trap_flag, int help_flag, int wall)
+{
+	int *map = temp_map;
+	int index = 0;
+
+	// í•¨ì • ê¹ƒë°œ
+	for (int i = 0; i < trap_flag; i++)
+		*(map + index++) = rand() % 3 + 2;
+
+	// íŒíŠ¸ ê¹ƒë°œ
+	for (int i = 0; i < help_flag; i++)
+		*(map + index++) = rand() % 3 + 5;
+
+	// ì´ë™ ë¶ˆê°€ëŠ¥ ì˜ì—­
+	for (int i = 0; i < wall; i++)
+		*(map + index++) = 1;
+
+	// ë³´ë¬¼ ê¹ƒë°œ
+	*(map + index++) = 8;
+
+	// ì›ì 
+	*(map + index) = 9;
+}
+
+void shuffle_map(int temp_map[][MAP_SIZE - 1])
+{
+	int *map = temp_map;
+	int temp_map_1d[(MAP_SIZE - 1) * (MAP_SIZE - 1)];
 	int temp;
 
-	for ( int i = 0; i < ( MAP_SIZE - 1 ) * ( MAP_SIZE - 1 ); i++ ) {
-		temp_map_1d[i] = *( map + i );
+	for (int i = 0; i < (MAP_SIZE - 1) * (MAP_SIZE - 1); i++)
+	{
+		temp_map_1d[i] = *(map + i);
 	}
 
 	// shuffle temp_map_1d
-	for ( int i = 0; i < ( MAP_SIZE - 1 ) * ( MAP_SIZE - 1 * 2 ); i++ ) {
-		int randNum = rand() % ( ( MAP_SIZE - 1 ) * ( MAP_SIZE - 1 ) - 1) + 1;
+	for (int i = 0; i < (MAP_SIZE - 1) * (MAP_SIZE - 1 * 2); i++)
+	{
+		int randNum = rand() % ((MAP_SIZE - 1) * (MAP_SIZE - 1) - 1) + 1;
 		temp = temp_map_1d[0];
 		temp_map_1d[0] = temp_map_1d[randNum];
 		temp_map_1d[randNum] = temp;
 	}
 
 	// temp_map_1d to temp_map
-	for ( int i = 0; i < ( MAP_SIZE - 1 ) * ( MAP_SIZE - 1 ); i++ ) {
-		*( map + i ) = temp_map_1d[i];
+	for (int i = 0; i < (MAP_SIZE - 1) * (MAP_SIZE - 1); i++)
+	{
+		*(map + i) = temp_map_1d[i];
 	}
 }
 
-void set_map_1(int map[][MAP_SIZE]) {
-	for ( int i = 0; i < MAP_SIZE; i++ ) {
-		for ( int j = 0; j < MAP_SIZE; j++ )
+void set_map_1(int map[][MAP_SIZE])
+{
+	for (int i = 0; i < MAP_SIZE; i++)
+	{
+		for (int j = 0; j < MAP_SIZE; j++)
 			map[i][j] = 1;
 	}
 }

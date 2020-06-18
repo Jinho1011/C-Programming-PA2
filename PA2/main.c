@@ -4,7 +4,7 @@
 #include <Windows.h>
 #include <time.h>
 
-#define MAP_SIZE 12
+#define MAP_SIZE 30
 #define LEFT 75
 #define RIGHT 77
 #define UP 72
@@ -17,116 +17,245 @@
 #define GUARD_MARK "▣"
 #define FLAG_MARK "▶"
 #define TREASURE_MARK "▦"
+#define TEXT_COLOR_WHITE 15
+#define TEXT_COLOR_RED 12
+#define TEXT_COLOR_GREEN 10
 
-// 난이도별 맵 생성
-void gen_beginner_map();
-void gen_intermediate_map();
-void gen_advanced_map();
-void gen_flag(int temp_map[][MAP_SIZE - 1], int trap_flag, int help_flag, int wall);
-void shuffle_map(int temp_map[][MAP_SIZE - 1]);
-void set_map_1(int map[][MAP_SIZE]);
+struct mapNode
+{
+	int isWall;
+	int isFlag;
+	int flagNum;
+};
 
-// 맵 출력
-void display_map(int map[][MAP_SIZE]);
-
-// 메뉴 출력
-void display_menu();
-
-// 플레이어 이동 입력
-void move_player();
-
+void initMap(struct mapNode node[][MAP_SIZE]);
+void genFlag(struct mapNode node[][MAP_SIZE], int flagCnt, int flagNum);
+void genWall(struct mapNode node[][MAP_SIZE], int wallCnt);
+void displayMap(struct mapNode node[][MAP_SIZE]);
+void manageGame(struct mapNode node[][MAP_SIZE]);
+void movePlayer(struct mapNode node[][MAP_SIZE], int *x, int *y);
 void gotoxy(int x, int y);
+void CursorView(char show);
+void removeBlock();
+void textcolor(int color_number);
 
 int main()
 {
 	srand(time(NULL));
+	CursorView(0);
+	struct mapNode node[MAP_SIZE][MAP_SIZE];
+	initMap(node);
+	manageGame(node);
+	displayMap(node);
+}
 
-	int map[MAP_SIZE][MAP_SIZE];
-	set_map_1(map);
-	int temp_map[MAP_SIZE - 1][MAP_SIZE - 1] = {0};
+void initMap(struct mapNode node[][MAP_SIZE])
+{
+	int i, j;
 
-	gen_flag(temp_map, 3, 3, 20);
-	shuffle_map(temp_map);
-
-	// map에 temp_map 넣기
-	for (int i = 1; i < MAP_SIZE - 1; i++)
+	// init all members to 0
+	for (i = 0; i < MAP_SIZE; i++)
 	{
-		for (int j = 1; j < MAP_SIZE - 1; j++)
+		for (j = 0; j < MAP_SIZE; j++)
 		{
-			map[i][j] = temp_map[i - 1][j - 1];
+			node[i][j].isFlag = FALSE;
+			node[i][j].isWall = FALSE;
 		}
 	}
 
-	for (int i = 0; i < MAP_SIZE; i++)
+	// init map boundary
+	for (i = 0; i < MAP_SIZE; i++)
 	{
-		for (int j = 0; j < MAP_SIZE; j++)
+		for (j = 0; j < MAP_SIZE; j++)
 		{
-			printf("%d ", map[i][j]);
+			if (i == 0 || i == MAP_SIZE - 1 || j == 0 || j == MAP_SIZE - 1)
+				node[i][j].isWall = TRUE;
+		}
+	}
+
+	genFlag(node, 1, 1);
+	genFlag(node, 1, 2);
+	genFlag(node, 1, 3);
+	genFlag(node, 1, 4);
+	genFlag(node, 1, 5);
+
+	genWall(node, 50);
+}
+
+void genWall(struct mapNode node[][MAP_SIZE], int wallCnt)
+{
+	int i, j;
+
+	do
+	{
+		i = rand() % (MAP_SIZE - 1) + 1;
+		j = rand() % (MAP_SIZE - 1) + 1;
+
+		if (node[i][j].isWall == FALSE && node[i][j].isFlag == FALSE)
+		{
+			node[i][j].isWall = TRUE;
+			wallCnt--;
+		}
+	} while (wallCnt);
+}
+
+void genFlag(struct mapNode node[][MAP_SIZE], int flagCnt, int flagNum)
+{
+	int i, j;
+
+	do
+	{
+		i = rand() % (MAP_SIZE - 1) + 1;
+		j = rand() % (MAP_SIZE - 1) + 1;
+
+		if (node[i][j].isFlag == FALSE)
+		{
+			node[i][j].isFlag = TRUE;
+			node[i][j].flagNum = flagNum;
+			flagCnt--;
+		}
+	} while (flagCnt);
+}
+
+void displayMap(struct mapNode node[][MAP_SIZE])
+{
+	int i, j;
+
+	for (i = 0; i < MAP_SIZE; i++)
+	{
+		for (j = 0; j < MAP_SIZE; j++)
+		{
+			if (node[i][j].isWall == TRUE)
+			{
+				printf(WALL_MARK);
+			}
+			else
+			{
+				if (node[i][j].isFlag == TRUE)
+				{
+					printf(FLAG_MARK);
+				}
+				else
+				{
+					printf(NONE_MARK);
+				}
+			}
 		}
 		printf("\n");
 	}
 }
 
-void display_map()
+void manageGame(struct mapNode node[][MAP_SIZE])
 {
-}
+	int x = 2, y = 1;
 
-void gen_flag(int temp_map[][MAP_SIZE - 1], int trap_flag, int help_flag, int wall)
-{
-	int *map = temp_map;
-	int index = 0;
+	displayMap(node);
+	gotoxy(x, y);
+	printf(PLAYER_MARK);
 
-	// 함정 깃발
-	for (int i = 0; i < trap_flag; i++)
-		*(map + index++) = rand() % 3 + 2;
+	/*
+   flagNum 1 = 보물 깃발
+   flagNum 2 = 시간 단축 깃발
+   flagNum 3 = 원점 재배치 깃발
+   flagNUm 4 = 시간 연장 깃발
+   flagNum 5 = 장애물 제거 깃발
+   */
 
-	// 힌트 깃발
-	for (int i = 0; i < help_flag; i++)
-		*(map + index++) = rand() % 3 + 5;
-
-	// 이동 불가능 영역
-	for (int i = 0; i < wall; i++)
-		*(map + index++) = 1;
-
-	// 보물 깃발
-	*(map + index++) = 8;
-
-	// 원점
-	*(map + index) = 9;
-}
-
-void shuffle_map(int temp_map[][MAP_SIZE - 1])
-{
-	int *map = temp_map;
-	int temp_map_1d[(MAP_SIZE - 1) * (MAP_SIZE - 1)];
-	int temp;
-
-	for (int i = 0; i < (MAP_SIZE - 1) * (MAP_SIZE - 1); i++)
+	while (1)
 	{
-		temp_map_1d[i] = *(map + i);
-	}
+		movePlayer(node, &x, &y);
+		gotoxy(x, y);
+		printf(PLAYER_MARK);
 
-	// shuffle temp_map_1d
-	for (int i = 0; i < (MAP_SIZE - 1) * (MAP_SIZE - 1 * 2); i++)
-	{
-		int randNum = rand() % ((MAP_SIZE - 1) * (MAP_SIZE - 1) - 1) + 1;
-		temp = temp_map_1d[0];
-		temp_map_1d[0] = temp_map_1d[randNum];
-		temp_map_1d[randNum] = temp;
-	}
+		if (node[y][x / 2].isFlag == TRUE)
+		{
+			switch (node[y][x / 2].flagNum)
+			{
+			case 1:
+				removeBlock();
+				textcolor(TEXT_COLOR_GREEN);
+				printf(FLAG_MARK);
+				// check time
+				// get score
+				// print result
+				// next level or play again
+				break;
+			case 2:
+				removeBlock();
+				textcolor(TEXT_COLOR_RED);
+				printf(FLAG_MARK);
 
-	// temp_map_1d to temp_map
-	for (int i = 0; i < (MAP_SIZE - 1) * (MAP_SIZE - 1); i++)
-	{
-		*(map + i) = temp_map_1d[i];
+				break;
+			}
+		}
 	}
 }
 
-void set_map_1(int map[][MAP_SIZE])
+void movePlayer(struct mapNode node[][MAP_SIZE], int *x, int *y)
 {
-	for (int i = 0; i < MAP_SIZE; i++)
+	char ch;
+	s if (_kbhit())
 	{
-		for (int j = 0; j < MAP_SIZE; j++)
-			map[i][j] = 1;
+		removeBlock();
+		ch = _getch();
+		switch (ch)
+		{
+		case LEFT:
+			*x -= 2;
+			if (node[*y][*x / 2].isWall == TRUE)
+				*x += 2;
+			break;
+		case RIGHT:
+			*x += 2;
+			if (node[*y][*x / 2].isWall == TRUE)
+				*x -= 2;
+			break;
+		case UP:
+			*y -= 1;
+			if (node[*y][*x / 2].isWall == TRUE)
+				*y += 1;
+			break;
+		case DOWN:
+			*y += 1;
+			if (node[*y][*x / 2].isWall == TRUE)
+				*y -= 1;
+			break;
+		default:
+			break;
+		}
+		gotoxy(0, 30);
+		printf("%d %d", *x, *y);
 	}
+}
+
+void gotoxy(int x, int y)
+{
+	COORD cd;
+	cd.X = x;
+	cd.Y = y;
+	SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), cd);
+}
+
+void CursorView(char show)
+{
+	HANDLE hConsole;
+	CONSOLE_CURSOR_INFO ConsoleCursor;
+
+	hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+
+	ConsoleCursor.bVisible = show;
+	ConsoleCursor.dwSize = 1;
+
+	SetConsoleCursorInfo(hConsole, &ConsoleCursor);
+}
+
+void removeBlock()
+{
+	printf("\b\b");
+	printf(NONE_MARK);
+}
+
+void textcolor(int color_number)
+{
+	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), color_number);
 }

@@ -14,17 +14,13 @@
 #define NONE_MARK "  "
 #define PLAYER_MARK "◆"
 #define WALL_MARK "■"
-#define GUARD_MARK "▣"
 #define FLAG_MARK "▶"
-#define TREASURE_MARK "▦"
-#define TEXT_COLOR_WHITE 15
-#define TEXT_COLOR_RED 12
-#define TEXT_COLOR_GREEN 10
+#define REVEALED_FLAG_MARK "▷"
 
-struct mapNode
-{
+struct mapNode {
 	int isWall;
 	int isFlag;
+	int isRevealed;
 	int flagNum;
 };
 
@@ -32,42 +28,61 @@ void initMap(struct mapNode node[][MAP_SIZE]);
 void genFlag(struct mapNode node[][MAP_SIZE], int flagCnt, int flagNum);
 void genWall(struct mapNode node[][MAP_SIZE], int wallCnt);
 void displayMap(struct mapNode node[][MAP_SIZE]);
-void manageGame(struct mapNode node[][MAP_SIZE]);
-void movePlayer(struct mapNode node[][MAP_SIZE], int *x, int *y);
+int manageGame(struct mapNode node[][MAP_SIZE], int level);
+void movePlayer(struct mapNode node[][MAP_SIZE], int* x, int* y, char ch);
 void gotoxy(int x, int y);
 void CursorView(char show);
 void removeBlock();
-void textcolor(int color_number);
+void printStatus(double time, int count, double lTime, int lCount, int level);
+void printIntro();
 
-int main()
-{
+int main() {
 	srand(time(NULL));
 	CursorView(0);
 	struct mapNode node[MAP_SIZE][MAP_SIZE];
-	initMap(node);
-	manageGame(node);
-	displayMap(node);
+	int gameRes, level = 0;
+
+	// game explanation
+
+
+	while (1) {
+		initMap(node);
+		gameRes = manageGame(node, level);
+
+		if (gameRes == -1) {
+			continue;
+		}
+		else if (gameRes == 0) {
+			system("cls");
+			printf("GOOD BYE!");
+			return 0;
+		}
+		else {
+			if (level == 2) {
+				system("cls");
+				printf("asd!");
+				return 0;
+			}
+			level++;
+		}
+	}
 }
 
-void initMap(struct mapNode node[][MAP_SIZE])
-{
+void initMap(struct mapNode node[][MAP_SIZE]) {
 	int i, j;
 
 	// init all members to 0
-	for (i = 0; i < MAP_SIZE; i++)
-	{
-		for (j = 0; j < MAP_SIZE; j++)
-		{
+	for (i = 0; i < MAP_SIZE; i++) {
+		for (j = 0; j < MAP_SIZE; j++) {
 			node[i][j].isFlag = FALSE;
 			node[i][j].isWall = FALSE;
+			node[i][j].isRevealed = FALSE;
 		}
 	}
 
 	// init map boundary
-	for (i = 0; i < MAP_SIZE; i++)
-	{
-		for (j = 0; j < MAP_SIZE; j++)
-		{
+	for (i = 0; i < MAP_SIZE; i++) {
+		for (j = 0; j < MAP_SIZE; j++) {
 			if (i == 0 || i == MAP_SIZE - 1 || j == 0 || j == MAP_SIZE - 1)
 				node[i][j].isWall = TRUE;
 		}
@@ -78,65 +93,59 @@ void initMap(struct mapNode node[][MAP_SIZE])
 	genFlag(node, 1, 3);
 	genFlag(node, 1, 4);
 	genFlag(node, 1, 5);
+	genFlag(node, 5, 6);
 
 	genWall(node, 50);
 }
 
-void genWall(struct mapNode node[][MAP_SIZE], int wallCnt)
-{
+void genWall(struct mapNode node[][MAP_SIZE], int wallCnt) {
 	int i, j;
 
-	do
-	{
+	do {
 		i = rand() % (MAP_SIZE - 1) + 1;
 		j = rand() % (MAP_SIZE - 1) + 1;
 
-		if (node[i][j].isWall == FALSE && node[i][j].isFlag == FALSE)
-		{
+		if (node[i][j].isWall == FALSE && node[i][j].isFlag == FALSE && i != 1 && j != 1) {
 			node[i][j].isWall = TRUE;
 			wallCnt--;
 		}
 	} while (wallCnt);
 }
 
-void genFlag(struct mapNode node[][MAP_SIZE], int flagCnt, int flagNum)
-{
+void genFlag(struct mapNode node[][MAP_SIZE], int flagCnt, int flagNum) {
 	int i, j;
 
-	do
-	{
+	do {
 		i = rand() % (MAP_SIZE - 1) + 1;
 		j = rand() % (MAP_SIZE - 1) + 1;
 
-		if (node[i][j].isFlag == FALSE)
-		{
+		if (node[i][j].isFlag == FALSE) {
 			node[i][j].isFlag = TRUE;
 			node[i][j].flagNum = flagNum;
+			node[i][j].isRevealed = FALSE;
 			flagCnt--;
 		}
 	} while (flagCnt);
 }
 
-void displayMap(struct mapNode node[][MAP_SIZE])
-{
+void displayMap(struct mapNode node[][MAP_SIZE]) {
 	int i, j;
 
-	for (i = 0; i < MAP_SIZE; i++)
-	{
-		for (j = 0; j < MAP_SIZE; j++)
-		{
-			if (node[i][j].isWall == TRUE)
-			{
+	for (i = 0; i < MAP_SIZE; i++) {
+		for (j = 0; j < MAP_SIZE; j++) {
+			if (node[i][j].isWall == TRUE) {
 				printf(WALL_MARK);
 			}
-			else
-			{
-				if (node[i][j].isFlag == TRUE)
-				{
-					printf(FLAG_MARK);
+			else {
+				if (node[i][j].isFlag == TRUE) {
+					if (node[i][j].isRevealed == TRUE) {
+						printf(REVEALED_FLAG_MARK);
+					}
+					else {
+						printf(FLAG_MARK);
+					}
 				}
-				else
-				{
+				else {
 					printf(NONE_MARK);
 				}
 			}
@@ -145,99 +154,176 @@ void displayMap(struct mapNode node[][MAP_SIZE])
 	}
 }
 
-void manageGame(struct mapNode node[][MAP_SIZE])
-{
+int manageGame(struct mapNode node[][MAP_SIZE], int level) {
 	int x = 2, y = 1;
+	clock_t start, now;
+	int score = 0;
+	char ch;
+	char key;
+	int count = 0;
+	int lCount = 100 - (level * 5);
+	double time;
+	double lTime = 60 - (level * 5);;
+	int isOverlap = 0;
 
+	system("cls");
 	displayMap(node);
-	gotoxy(x, y);
-	printf(PLAYER_MARK);
+	start = clock();
 
-	/*
-   flagNum 1 = 보물 깃발
-   flagNum 2 = 시간 단축 깃발
-   flagNum 3 = 원점 재배치 깃발
-   flagNUm 4 = 시간 연장 깃발
-   flagNum 5 = 장애물 제거 깃발
-   */
+	while (1) {
+		now = clock();
+		time = (double)(now - start) / CLK_TCK;
 
-	while (1)
-	{
-		movePlayer(node, &x, &y);
+		gotoxy(0, 31);
+		printf("%d %d", x, y);
+
+		if (count == lCount || time >= lTime) {
+			system("cls");
+			gotoxy(30, 10);
+			printf("PRESS ESC TO EXIT OR SPACE TO");
+
+			while (1) {
+				key = _getch();
+				if (key == SPACE) {
+					return -1;
+				}
+				else if (key == ESC) {
+					return 0;
+				}
+				else {
+					continue;
+				}
+			}
+		}
+
 		gotoxy(x, y);
 		printf(PLAYER_MARK);
 
-		if (node[y][x / 2].isFlag == TRUE)
-		{
-			switch (node[y][x / 2].flagNum)
-			{
-			case 1:
-				removeBlock();
-				textcolor(TEXT_COLOR_GREEN);
-				printf(FLAG_MARK);
-				// check time
-				// get score
-				// print result
-				// next level or play again
-				break;
-			case 2:
-				removeBlock();
-				textcolor(TEXT_COLOR_RED);
-				printf(FLAG_MARK);
+		if (node[y][x / 2].isFlag == TRUE) {
+			switch (node[y][x / 2].flagNum) {
+			case 1: // treasure
+				if (isOverlap != 1 && node[y][x / 2].isRevealed == FALSE) {
+					node[y][x / 2].isRevealed = TRUE;
+					isOverlap = 1;
 
+					score = (level + 1) * 100 - count / 2 - (int)time;
+
+					system("cls");
+					gotoxy(30, 10);
+					printf("SUCCESS");
+					gotoxy(30, 11);
+					printf("SCORE : %d", score);
+					Sleep(3000);
+
+					return score;
+				}
+				break;
+			case 2:   // 시간단축
+				if (isOverlap != 2 && node[y][x / 2].isRevealed == FALSE) {
+					node[y][x / 2].isRevealed = TRUE;
+					isOverlap = 2;
+
+					lTime -= 5 * (level + 1);
+
+					gotoxy(62, 11);
+					printf("제한 시간이 %d만큼 줄었습니다..!", 5 * (level + 1));
+				}
+				break;
+			case 3:   // 원점으로
+				if (isOverlap != 3 && node[y][x / 2].isRevealed == FALSE) {
+					node[y][x / 2].isRevealed = TRUE;
+					isOverlap = 3;
+
+					x = 2;
+					y = 1;
+
+					gotoxy(62, 11);
+					printf("원점으로 돌아갔습니다..!");
+
+					continue;
+				}
+				break;
+			case 4:   // 시간연장
+				if (isOverlap != 4 && node[y][x / 2].isRevealed == FALSE) {
+					node[y][x / 2].isRevealed = TRUE;
+					isOverlap = 4;
+
+					lTime += 5 * (level + 1);
+
+					gotoxy(62, 11);
+					printf("제한 시간이 %d만큼 늘었습니다..!", 5 * (level + 1));
+				}
+				break;
+			case 5: // 횟수증가
+				if (isOverlap != 5 && node[y][x / 2].isRevealed == FALSE) {
+					node[y][x / 2].isRevealed = TRUE;
+					isOverlap = 5;
+
+					lCount += 5 * (level + 1);
+
+					gotoxy(62, 11);
+					printf("제한 횟수가 %d만큼 늘었습니다..!", 5 * (level + 1));
+				}
+				break;
+			case 6: // 그냥깃발
+				node[y][x / 2].isRevealed = TRUE;
+				gotoxy(62, 11);
+				printf("아무 일도 일어나지 않았습니다..!");
 				break;
 			}
 		}
-	}
-}
 
-void movePlayer(struct mapNode node[][MAP_SIZE], int *x, int *y)
-{
-	char ch;
-	s if (_kbhit())
-	{
-		removeBlock();
-		ch = _getch();
-		switch (ch)
-		{
-		case LEFT:
-			*x -= 2;
-			if (node[*y][*x / 2].isWall == TRUE)
-				*x += 2;
-			break;
-		case RIGHT:
-			*x += 2;
-			if (node[*y][*x / 2].isWall == TRUE)
-				*x -= 2;
-			break;
-		case UP:
-			*y -= 1;
-			if (node[*y][*x / 2].isWall == TRUE)
-				*y += 1;
-			break;
-		case DOWN:
-			*y += 1;
-			if (node[*y][*x / 2].isWall == TRUE)
-				*y -= 1;
-			break;
-		default:
-			break;
+		printStatus(time, count, lTime, lCount, level);
+
+		if (_kbhit()) {
+			gotoxy(0, 0);
+			displayMap(node);
+			ch = _getch();
+			movePlayer(node, &x, &y, ch);
+
+			/*
+				\b * 25
+				space * 25
+			*/
+
+			count++;
+			isOverlap = 0;
 		}
-		gotoxy(0, 30);
-		printf("%d %d", *x, *y);
 	}
 }
 
-void gotoxy(int x, int y)
-{
+void movePlayer(struct mapNode node[][MAP_SIZE], int* x, int* y, char ch) {
+	removeBlock();
+	switch (ch) {
+	case LEFT:
+		*x -= 2;
+		if (node[*y][*x / 2].isWall == TRUE) *x += 2;
+		break;
+	case RIGHT:
+		*x += 2;
+		if (node[*y][*x / 2].isWall == TRUE) *x -= 2;
+		break;
+	case UP:
+		*y -= 1;
+		if (node[*y][*x / 2].isWall == TRUE) *y += 1;
+		break;
+	case DOWN:
+		*y += 1;
+		if (node[*y][*x / 2].isWall == TRUE) *y -= 1;
+		break;
+	default:
+		break;
+	}
+}
+
+void gotoxy(int x, int y) {
 	COORD cd;
 	cd.X = x;
 	cd.Y = y;
 	SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), cd);
 }
 
-void CursorView(char show)
-{
+void CursorView(char show) {
 	HANDLE hConsole;
 	CONSOLE_CURSOR_INFO ConsoleCursor;
 
@@ -249,13 +335,25 @@ void CursorView(char show)
 	SetConsoleCursorInfo(hConsole, &ConsoleCursor);
 }
 
-void removeBlock()
-{
+void removeBlock() {
 	printf("\b\b");
 	printf(NONE_MARK);
 }
 
-void textcolor(int color_number)
-{
-	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), color_number);
+void printStatus(double time, int count, double lTime, int lCount, int level) {
+	gotoxy(62, 3);
+	printf("level is %d, ", level);
+	gotoxy(62, 5);
+	printf("제한 횟수는 %d, ", lCount);
+	gotoxy(62, 6);
+	printf("제한 시간은 %.0f초 입니다", lTime);
+
+	gotoxy(62, 8);
+	printf("횟수 : %d ", count / 2);
+	gotoxy(62, 9);
+	printf("시간 : %.2f ", time);
+}
+
+void printIntro() {
+	
 }
